@@ -3,7 +3,7 @@
 #                                    d/dt u - div(A*grad(u)) = f
 # in Omega x (0,T], with intiial value u(.,0) = 0 in Omega, and homogeneous Dirichlet boundary condition.
 #
-# Here A = 1 and f(t,x,y) = (1+2t*pi^2)*sin(pi*x)*sin(pi*y), with analytical solution u(t,x,y) = t*sin(pi*x)*sin(pi*y).
+# Here A = ? and f(t,x,y) = 1, and a reference solution is computed on the fine grid.
 #
 # Error plotted and computed in L2-norm at time T = 1.
 #####
@@ -21,6 +21,7 @@ from math import pi
 fine = 128
 fine_world = np.array([fine, fine])
 np_fine = np.prod(fine_world + 1)
+xp_fine = util.pCoordinates(fine_world).flatten()
 bc = np.array([[0, 0], [0, 0]])
 N_list = [2, 4, 8, 16, 32, 64]
 
@@ -36,7 +37,8 @@ plot_coefficient = False
 x = np.linspace(0, 1, fine)
 y = np.linspace(0, 1, fine)
 X, Y = np.meshgrid(x, y)
-A = np.ones([fine, fine])
+n = 1
+A = 102 + 100 * np.sin(n * 2 * pi * X) * np.sin(n * 2 * pi * Y)
 a_fine = A.flatten()
 if plot_coefficient:
     plt.figure("OriginalCoefficient")
@@ -45,18 +47,39 @@ if plot_coefficient:
 
 # define source function
 def f(t):
-    x = np.linspace(0, 1, fine + 1)
-    y = np.linspace(0, 1, fine + 1)
-    X, Y = np.meshgrid(x, y)
-    return ((1 + 2 * t * pi ** 2) * np.sin(pi * X) * np.sin(pi * Y)).flatten()
+    return np.ones(np_fine)
 
-# define analytical solution
-def u(t):
-    x = np.linspace(0, 1, fine + 1)
-    y = np.linspace(0, 1, fine + 1)
-    X, Y = np.meshgrid(x, y)
-    return (t * np.sin(pi * X) * np.sin(pi * Y)).flatten()
+# compute reference solution
+def u_ref(time_interval):
 
+    # define fine world
+    world = World(fine_world, fine_world // fine_world, bc)
+
+    # create fine matrices
+    S_fine = fem.assemblePatchMatrix(fine_world, world.ALocFine, a_fine)
+    M_fine = fem.assemblePatchMatrix(fine_world, world.MLocFine)
+
+    # find coarse free indices
+    boundary_map = bc == 0
+    fixed_free = util.boundarypIndexMap(fine_world, boundaryMap=boundary_map)
+    free_fine = np.setdiff1d(np.arange(np_fine), fixed_free)
+
+    # construct free matrices
+    S_fine_free = S_fine[free_fine][:, free_fine]
+    M_fine_free = M_fine[free_fine][:, free_fine]
+
+    uref = np.zeros(np_fine)
+    for t in time_interval:
+        L_fine_free = (M_fine * f(t))[free_fine]
+
+        lhs = M_fine_free + tau * S_fine_free
+        rhs = tau * L_fine_free + M_fine_free * uref[free_fine]
+
+        uref[free_fine] = linalg.linSolve(lhs, rhs)
+
+    return uref
+
+uref = u_ref(time_interval)
 error = []
 x = []
 y = []
@@ -99,7 +122,7 @@ for N in N_list:
         U_coarse[free_coarse] = linalg.linSolve(lhs, rhs)
 
     U_fine = basis * U_coarse
-    error.append(np.sqrt(np.dot(u(T) - U_fine, u(T) - U_fine)))
+    error.append(np.sqrt(np.dot(uref - U_fine, uref - U_fine)))
     x.append(N)
     y.append(1. / N)
 
