@@ -1,11 +1,13 @@
 #####
 # Implementation of a standard backward Euler-Galerkin Finite Element Method for the parabolic problem
-#                                    d/dt u - div(A*grad(u)) = f
+#                                    d/dt u - div(A*grad(u)) = dW/dt
 # in Omega x (0,T], with intiial value u(.,0) = 0 in Omega, and homogeneous Dirichlet boundary condition.
 #
-# Here A = ? and f(t,x,y) = 1, and a reference solution is computed on the fine grid.
+# Here A = 1 and f(t,x,y) = 1, and a reference solution is computed on the fine grid.
 #
 # Error plotted and computed in L2-norm at time T = 1.
+# The finest noise and the finest time step is used for both the coarse and fine computations, so the error is purely
+# measured in space.
 #####
 
 import numpy as np
@@ -18,39 +20,63 @@ from math import pi
 
 
 # spatial parameters
-fine = 128
+fine = 64
 fine_world = np.array([fine, fine])
 np_fine = np.prod(fine_world + 1)
 xp_fine = util.pCoordinates(fine_world).flatten()
 bc = np.array([[0, 0], [0, 0]])
-N_list = [2, 4, 8, 16, 32, 64]
+N_list = [2, 4, 8, 16, 32]#, 64]
 
 # temporal parameters
 T = 1
 tau = 0.01
-time_interval = np.arange(0 + tau, T + tau, tau)   # not including 0, ending at T
+#time_interval = np.arange(0 + tau, T + tau, tau)   # not including 0, ending at T
+num_time_steps = int(T / tau)
 
 # for coefficient plot
 plot_coefficient = False
 
-# construct possible ms coefficient
+# construct simple coefficient
 x = np.linspace(0, 1, fine)
 y = np.linspace(0, 1, fine)
 X, Y = np.meshgrid(x, y)
-n = 1
-A = 102 + 100 * np.sin(n * 2 * pi * X) * np.sin(n * 2 * pi * Y)
+A = np.ones([fine, fine])
 a_fine = A.flatten()
 if plot_coefficient:
     plt.figure("OriginalCoefficient")
     drawCoefficient(fine_world, a_fine)
     plt.show()
 
-# define source function
-def f(t):
-    return np.ones(np_fine)
+def brownian(num_time_steps):
+    b = [0]
+    for _ in range(num_time_steps):
+        b.append(b[-1] + np.sqrt(tau) * np.random.normal())
+    return np.array(b)
+
+def noise_term(m, n, num_time_steps):
+    x = np.linspace(0, 1, fine + 1)
+    y = np.linspace(0, 1, fine + 1)
+    X, Y = np.meshgrid(x, y)
+
+    lambda_mn = 1 / 2 ** (m + n - 2)
+    e_mn = 4 * np.sin(n * pi * X) * np.sin(m * pi * Y)
+    space_mn = np.expand_dims((lambda_mn * e_mn).flatten(), axis=1)
+    b = np.expand_dims(brownian(num_time_steps), axis=0)
+    return np.dot(space_mn, b)
+
+def full_noise(N, num_time_steps):
+    fine_noise = 0
+    for m in range(1, N + 1):
+        for n in range(1, N + 1):
+            print(m, n)
+            fine_noise += noise_term(m, n, num_time_steps)
+    return fine_noise
+
+# compute noise
+W = full_noise(fine, num_time_steps)
 
 # compute reference solution
-def u_ref(time_interval):
+def u_ref(num_time_steps):
 
     # define fine world
     world = World(fine_world, fine_world // fine_world, bc)
@@ -69,8 +95,8 @@ def u_ref(time_interval):
     M_fine_free = M_fine[free_fine][:, free_fine]
 
     uref = np.zeros(np_fine)
-    for t in time_interval:
-        L_fine_free = (M_fine * f(t))[free_fine]
+    for i in range(num_time_steps):
+        L_fine_free = (M_fine * (W[:, i + 1] - W[:, i]))[free_fine]
 
         lhs = M_fine_free + tau * S_fine_free
         rhs = tau * L_fine_free + M_fine_free * uref[free_fine]
@@ -79,7 +105,7 @@ def u_ref(time_interval):
 
     return uref
 
-uref = u_ref(time_interval)
+uref = u_ref(num_time_steps)
 error = []
 x = []
 y = []
@@ -113,8 +139,8 @@ for N in N_list:
     M_coarse_free = M_coarse[free_coarse][:, free_coarse]
 
     U_coarse = np.zeros(np_coarse)
-    for t in time_interval:
-        L_free = (basis.T * M_fine * f(t))[free_coarse]
+    for i in range(num_time_steps):
+        L_free = (basis.T * M_fine * (W[:, i + 1] - W[:, i]))[free_coarse]
 
         lhs = M_coarse_free + tau * S_coarse_free
         rhs = tau * L_free + M_coarse_free * U_coarse[free_coarse]
@@ -136,5 +162,6 @@ plt.loglog(N_list, error, '-s', basex=2, basey=2)
 plt.grid(True, which="both")
 plt.gcf().subplots_adjust(bottom=0.15)
 plt.xlabel('$1/H$', fontsize=22)
+plt.show()
 
 
