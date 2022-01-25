@@ -83,4 +83,4 @@ for i in range(4):
     ax.zaxis.set_major_locator(LinearLocator(10))
     ax.axis('on')
 
-
+plt.show()
