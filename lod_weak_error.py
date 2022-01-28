@@ -10,19 +10,19 @@ from gridlod.world import World, Patch
 from visualize import drawCoefficient
 from math import pi
 
-
+from methods import full_noise, load_reference_solution
 
 # spatial parameters
-fine = 64
+fine = 128
 fine_world = np.array([fine, fine])
 np_fine = np.prod(fine_world + 1)
 xp_fine = util.pCoordinates(fine_world).flatten()
 bc = np.array([[0, 0], [0, 0]])
-N_list = [2, 4, 8, 16, 32]
+N_list = [4, 8, 16, 32]
 
 # temporal parameters
-T = 1
-tau = 0.01
+T = 0.1
+tau = T * 2 ** (-7)
 num_time_steps = int(T / tau)
 
 # for coefficient plot
@@ -37,6 +37,7 @@ if plot_coefficient:
     drawCoefficient(fine_world, a_fine)
     plt.show()
 
+'''
 def brownian(num_time_steps):
     b = [0]
     for _ in range(num_time_steps):
@@ -61,7 +62,9 @@ def full_noise(N, num_time_steps):
             #print(m, n)
             fine_noise += noise_term(m, n, num_time_steps)
     return fine_noise
+'''
 
+'''
 # compute reference solution
 def u_ref(num_time_steps, W):
 
@@ -82,7 +85,7 @@ def u_ref(num_time_steps, W):
     M_fine_free = M_fine[free_fine][:, free_fine]
 
     uref = np.zeros(np_fine)
-    uref[free_fine] = 100
+    uref[free_fine] = 1
     for i in range(num_time_steps):
         L_fine_free = (M_fine * (W[:, i + 1] - W[:, i]))[free_fine]
 
@@ -94,13 +97,16 @@ def u_ref(num_time_steps, W):
     return uref
 
 # compute u_ref
-M = 1000
+M = 300
 uref = 0
 for i in range(M):
     print('Reference solution   M = %d/%d' %(i + 1, M))
-    W = full_noise(fine, num_time_steps)
+    W = full_noise(fine, num_time_steps, tau)
     uref += u_ref(num_time_steps, W)
 uref = uref / M
+'''
+
+uref = load_reference_solution()
 
 error = []
 x = []
@@ -150,15 +156,15 @@ for N in N_list:
     S_coarse_free = S_coarse[free_coarse][:, free_coarse]
     M_coarse_free = M_coarse[free_coarse][:, free_coarse]
 
-    m = 1000
+    m = 200
     Em_U = 0
     for j in range(m):
         print('N = %d/%d   m = %d/%d' %(N, N_list[-1], j + 1, m))
 
-        W = full_noise(fine, num_time_steps)
+        W = full_noise(fine, num_time_steps, tau)
 
         U_coarse = np.zeros(np_coarse)
-        U_coarse[free_coarse] = 100
+        U_coarse[free_coarse] = 1
         for i in range(num_time_steps):
             L_free = (ms_basis.T * M_fine * (W[:, i + 1] - W[:, i]))[free_coarse]
 
@@ -186,3 +192,11 @@ plt.xlabel('$1/H$', fontsize=22)
 plt.show()
 
 #error = [0.5100286016760015, 0.14729734362187077, 0.03680330880287353, 0.011767456523230928, 0.002507785495906016]
+
+# Computing reference solution with equal M
+#[7.841422171835297, 1.99378698034817, 0.47684243891426714, 0.10987159644038115]
+
+# Loading from reference solution with much larger M
+#[8.557494785996406, 3.057519438461287, 1.908625607749723, 1.7094579549203002]
+
+# Computing reference solution using this code with larger M
