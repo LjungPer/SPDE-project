@@ -4,6 +4,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 
 from gridlod import util, fem, linalg, interp, coef, lod, pglod
 from gridlod.world import World, Patch
@@ -25,6 +26,8 @@ T = 0.1
 tau = T * 2 ** (-7)
 num_time_steps = int(T / tau)
 
+np.random.seed(0)
+
 # for coefficient plot
 plot_coefficient = False
 
@@ -36,6 +39,10 @@ if plot_coefficient:
     plt.figure("OriginalCoefficient")
     drawCoefficient(fine_world, a_fine)
     plt.show()
+
+# reset seed
+t = 1000 * time.time()  # time in ms
+np.random.seed(int(t) % 2 ** 32)  # seed must be between 0 and 2 ** 32 - 1
 
 '''
 def brownian(num_time_steps):
@@ -63,7 +70,6 @@ def full_noise(N, num_time_steps):
             fine_noise += noise_term(m, n, num_time_steps)
     return fine_noise
 '''
-
 '''
 # compute reference solution
 def u_ref(num_time_steps, W):
@@ -156,12 +162,12 @@ for N in N_list:
     S_coarse_free = S_coarse[free_coarse][:, free_coarse]
     M_coarse_free = M_coarse[free_coarse][:, free_coarse]
 
-    m = 200
+    m = 40
     Em_U = 0
     for j in range(m):
         print('N = %d/%d   m = %d/%d' %(N, N_list[-1], j + 1, m))
 
-        W = full_noise(fine, num_time_steps, tau)
+        W = full_noise(fine, N, num_time_steps, tau)
 
         U_coarse = np.zeros(np_coarse)
         U_coarse[free_coarse] = 1
@@ -197,6 +203,8 @@ plt.show()
 #[7.841422171835297, 1.99378698034817, 0.47684243891426714, 0.10987159644038115]
 
 # Loading from reference solution with much larger M
+# Update: This was probably with the wrong coefficient...
 #[8.557494785996406, 3.057519438461287, 1.908625607749723, 1.7094579549203002]
 
-# Computing reference solution using this code with larger M
+# Trying above but setting the seed first...
+# [7.932778223580014, 2.028218902624859, 0.49351711206960097, 0.11392844597537641]

@@ -39,7 +39,7 @@ def compute_ms_basis(world, a_fine, k):
 
 
 
-def full_noise(fine, num_time_steps, tau):
+def full_noise(fine, Nh, num_time_steps, tau):
 
     def brownian(num_time_steps):
         b = [0]
@@ -59,8 +59,8 @@ def full_noise(fine, num_time_steps, tau):
         return np.dot(space_mn, b)
 
     fine_noise = 0
-    for m in range(1, fine + 1):
-        for n in range(1, fine + 1):
+    for m in range(1, Nh + 1):
+        for n in range(1, Nh + 1):
             if m + n - 1 > 55:      # skip terms on machine precision level
                 continue
             else:
