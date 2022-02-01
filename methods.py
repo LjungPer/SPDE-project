@@ -8,12 +8,12 @@ from gridlod.world import World, Patch
 from math import pi
 from visualize import drawCoefficient
 
-def load_reference_solution():
+def load_reference_solution(ref_file, sim_file):
     # read reference solution from file
-    uref = np.loadtxt('reference.txt', dtype=float)
+    uref = np.loadtxt(ref_file, dtype=float)
 
     # read number of simulations made from file
-    f = open('Mref.txt', 'r')
+    f = open(sim_file, 'r')
     M = int(f.read())
     f.close()
 
@@ -52,7 +52,7 @@ def full_noise(fine, Nh, num_time_steps, tau):
         y = np.linspace(0, 1, fine + 1)
         X, Y = np.meshgrid(x, y)
 
-        lambda_mn = 1 / 2 ** (m + n - 1)
+        lambda_mn = 1 / 2 ** (m + n - 2)
         e_mn = 4 * np.sin(n * pi * X) * np.sin(m * pi * Y)
         space_mn = np.expand_dims((lambda_mn * e_mn).flatten(), axis=1)
         b = np.expand_dims(brownian(num_time_steps), axis=0)

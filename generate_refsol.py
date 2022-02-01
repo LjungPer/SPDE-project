@@ -12,6 +12,9 @@ from gridlod.world import World, Patch
 from visualize import drawCoefficient
 from math import pi
 
+# what files to store in
+ref_file = "refT1.txt"
+sim_file = "MrefT1.txt"
 
 # set random seed
 np.random.seed(0)
@@ -24,7 +27,7 @@ xp_fine = util.pCoordinates(fine_world).flatten()
 bc = np.array([[0, 0], [0, 0]])
 
 # temporal parameters
-T = 0.1
+T = 1
 tau = T * 2 ** (-7)
 num_time_steps = int(T / tau)
 
@@ -117,18 +120,18 @@ def store_number_of_simulations(simulations):
         f.close()
 
     # store number of MC-simulations made
-    if os.path.isfile('Mref.txt'):
-        M = read_int('Mref.txt')
+    if os.path.isfile(sim_file):
+        M = read_int(sim_file)
         M += simulations
-        write_int('Mref.txt', M)
+        write_int(sim_file, M)
         print('Total number of simulations made: %d' % M)
     else:
-        write_int('Mref.txt', simulations)
+        write_int(sim_file, simulations)
 
 
 # load or initialize reference solution
-if os.path.isfile('reference.txt'):
-    uref = np.loadtxt('reference.txt', dtype=float)
+if os.path.isfile(ref_file):
+    uref = np.loadtxt(ref_file, dtype=float)
 else:
     uref = 0
 
@@ -151,7 +154,7 @@ for i in range(sims_to_add):
 
     # store reference solution to txt
     start = time.time()
-    np.savetxt('reference.txt', uref, fmt='%.16f')
+    np.savetxt(ref_file, uref, fmt='%.16f')
     store_number_of_simulations(1)
     end = time.time()
     print('Storage updated (%.1f sec)' %(end - start))

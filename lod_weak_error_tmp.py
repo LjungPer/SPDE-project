@@ -10,27 +10,41 @@ from gridlod import util, fem, linalg, interp, coef, lod, pglod
 from gridlod.world import World, Patch
 from visualize import drawCoefficient
 from math import pi
-from methods import compute_ms_basis, load_reference_solution, generate_coefficient, full_noise
 
+from methods import full_noise, load_reference_solution
 
 # spatial parameters
-fine = 2 ** 7
+fine = 128
 fine_world = np.array([fine, fine])
 np_fine = np.prod(fine_world + 1)
 xp_fine = util.pCoordinates(fine_world).flatten()
 bc = np.array([[0, 0], [0, 0]])
-N_list = [2, 4, 8]
+N_list = [8]
 
 # temporal parameters
-T = 0.1
+T = 1
 tau = T * 2 ** (-7)
 num_time_steps = int(T / tau)
 
-# generate coefficient
-a_fine = generate_coefficient(fine)
+np.random.seed(0)
 
-# load u_ref
-uref = load_reference_solution()
+# for coefficient plot
+plot_coefficient = False
+
+# construct ms coefficient
+n = 2
+A = np.kron(np.random.rand(fine // n, fine // n) * 0.9 + 0.1, np.ones((n, n)))
+a_fine = A.flatten()
+if plot_coefficient:
+    plt.figure("OriginalCoefficient")
+    drawCoefficient(fine_world, a_fine)
+    plt.show()
+
+# reset seed
+t = 1000 * time.time()  # time in ms
+np.random.seed(int(t) % 2 ** 32)  # seed must be between 0 and 2 ** 32 - 1
+
+uref = load_reference_solution('refT1.txt', 'MrefT1.txt')
 
 error = []
 x = []
@@ -44,6 +58,17 @@ for N in N_list:
     coarse_el = fine_world // coarse_world
     world = World(coarse_world, coarse_el, bc)
 
+    def computeKmsij(TInd):
+        patch = Patch(world, k, TInd)
+        IPatch = lambda: interp.L2ProjectionPatchMatrix(patch, bc)
+        aPatch = lambda: coef.localizeCoefficient(patch, a_fine)
+
+        correctorsList = lod.computeBasisCorrectors(patch, IPatch, aPatch)
+        csi = lod.computeBasisCoarseQuantities(patch, correctorsList, aPatch)
+        return patch, correctorsList, csi.Kmsij
+
+    patchT, correctorsListT, KmsijT = zip(*map(computeKmsij, range(world.NtCoarse)))
+
     xp_coarse = util.pCoordinates(coarse_world).flatten()
     np_coarse = np.prod(coarse_world + 1)
 
@@ -53,7 +78,7 @@ for N in N_list:
 
     # construct coarse basis functions on fine grid
     basis = fem.assembleProlongationMatrix(coarse_world, coarse_el)
-    basis_correctors = compute_ms_basis(world, a_fine, k)
+    basis_correctors = pglod.assembleBasisCorrectors(world, patchT, correctorsListT)
     ms_basis = basis - basis_correctors
 
     # construct coarse ms matrices
@@ -69,12 +94,12 @@ for N in N_list:
     S_coarse_free = S_coarse[free_coarse][:, free_coarse]
     M_coarse_free = M_coarse[free_coarse][:, free_coarse]
 
-    m = 100
-    Em_U = 0
-    for j in range(m):
-        print('N = %d/%d   m = %d/%d' %(N, N_list[-1], j + 1, m))
+    m = 1000
+    U_fine = 0
+    for j in range(1, m + 1):
+        print('------------ %d/%d ------------' % (j, m))
 
-        W = full_noise(fine, num_time_steps, tau)
+        W = full_noise(fine, fine, num_time_steps, tau)
 
         U_coarse = np.zeros(np_coarse)
         U_coarse[free_coarse] = 1
@@ -86,10 +111,10 @@ for N in N_list:
 
             U_coarse[free_coarse] = linalg.linSolve(lhs, rhs)
 
-        U_fine = ms_basis * U_coarse
-        Em_U += U_fine
-    Em_U = Em_U / m
-    error.append(np.sqrt(np.dot(uref - Em_U, uref - Em_U)))
+        U_fine += ms_basis * U_coarse
+        Em_U = U_fine / j
+        error.append(np.sqrt(np.dot(uref - Em_U, uref - Em_U)))
+        print('Error: %.8f' %error[-1])
 
 
 # plot errors

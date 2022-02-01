@@ -19,10 +19,10 @@ fine_world = np.array([fine, fine])
 np_fine = np.prod(fine_world + 1)
 xp_fine = util.pCoordinates(fine_world).flatten()
 bc = np.array([[0, 0], [0, 0]])
-N_list = [4, 8, 16, 32]
+N_list = [8]
 
 # temporal parameters
-T = 0.1
+T = 1
 tau = T * 2 ** (-7)
 num_time_steps = int(T / tau)
 
@@ -103,16 +103,15 @@ def u_ref(num_time_steps, W):
     return uref
 
 # compute u_ref
-M = 300
+M = 50
 uref = 0
 for i in range(M):
     print('Reference solution   M = %d/%d' %(i + 1, M))
-    W = full_noise(fine, num_time_steps, tau)
+    W = full_noise(fine, fine, num_time_steps, tau)
     uref += u_ref(num_time_steps, W)
 uref = uref / M
 '''
-
-uref = load_reference_solution()
+uref = load_reference_solution('refT1.txt', 'MrefT1.txt')
 
 error = []
 x = []
@@ -162,12 +161,14 @@ for N in N_list:
     S_coarse_free = S_coarse[free_coarse][:, free_coarse]
     M_coarse_free = M_coarse[free_coarse][:, free_coarse]
 
-    m = 40
-    Em_U = 0
-    for j in range(m):
-        print('N = %d/%d   m = %d/%d' %(N, N_list[-1], j + 1, m))
+    m = 1000
+    #Em_U = 0
+    U_fine = 0
+    for j in range(1, m + 1):
+        #print('N = %d/%d   m = %d/%d' %(N, N_list[-1], j + 1, m))
+        print('------------ %d/%d ------------' % (j, m))
 
-        W = full_noise(fine, N, num_time_steps, tau)
+        W = full_noise(fine, fine, num_time_steps, tau)
 
         U_coarse = np.zeros(np_coarse)
         U_coarse[free_coarse] = 1
@@ -179,10 +180,12 @@ for N in N_list:
 
             U_coarse[free_coarse] = linalg.linSolve(lhs, rhs)
 
-        U_fine = ms_basis * U_coarse
-        Em_U += U_fine
-    Em_U = Em_U / m
-    error.append(np.sqrt(np.dot(uref - Em_U, uref - Em_U)))
+        U_fine += ms_basis * U_coarse
+        Em_U = U_fine / j
+        error.append(np.sqrt(np.dot(uref - Em_U, uref - Em_U)))
+        print('Error: %.8f' %error[-1])
+    #Em_U = Em_U / m
+    #error.append(np.sqrt(np.dot(uref - Em_U, uref - Em_U)))
 
 
 # plot errors
@@ -197,14 +200,5 @@ plt.gcf().subplots_adjust(bottom=0.15)
 plt.xlabel('$1/H$', fontsize=22)
 plt.show()
 
-#error = [0.5100286016760015, 0.14729734362187077, 0.03680330880287353, 0.011767456523230928, 0.002507785495906016]
-
-# Computing reference solution with equal M
-#[7.841422171835297, 1.99378698034817, 0.47684243891426714, 0.10987159644038115]
-
-# Loading from reference solution with much larger M
-# Update: This was probably with the wrong coefficient...
-#[8.557494785996406, 3.057519438461287, 1.908625607749723, 1.7094579549203002]
-
-# Trying above but setting the seed first...
-# [7.932778223580014, 2.028218902624859, 0.49351711206960097, 0.11392844597537641]
+# N = 8, error at 0.046 after m=219 but at 0.01 after m=611
+# N = 16, error at 0.051 after m=219
