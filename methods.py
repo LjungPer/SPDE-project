@@ -1,7 +1,7 @@
 
 import numpy as np
 import matplotlib.pyplot as plt
-import time
+import time, os
 
 from gridlod import util, fem, linalg, interp, coef, lod, pglod
 from gridlod.world import World, Patch
@@ -86,3 +86,42 @@ def generate_coefficient(fine, plot_coefficient=False):
     np.random.seed(int(t) % 2 ** 32)  # seed must be between 0 and 2 ** 32 - 1
 
     return a_fine
+
+
+def store_number_of_simulations(sim_file, simulations):
+    def read_int(filename):
+        f = open(filename, 'r')
+        tmp = int(f.read())
+        f.close()
+        return tmp
+
+    def write_int(filename, tmp):
+        f = open(filename, 'w')
+        f.write(str(tmp))
+        f.close()
+
+    # store number of MC-simulations made
+    if os.path.isfile(sim_file):
+        M = read_int(sim_file)
+        M += simulations
+        write_int(sim_file, M)
+        print('Total number of simulations made: %d' % M)
+    else:
+        write_int(sim_file, simulations)
+
+
+def load_solution(sol_file, sim_file):
+
+    if os.path.isfile(sol_file):
+        u = np.loadtxt(sol_file, dtype=float)
+    else:
+        u = 0
+
+    if os.path.isfile(sim_file):
+        f = open(sim_file, 'r')
+        M = int(f.read())
+        f.close()
+    else:
+        M = 0
+
+    return u, M
