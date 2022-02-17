@@ -52,8 +52,8 @@ def full_noise(fine, Nh, num_time_steps, tau):
         y = np.linspace(0, 1, fine + 1)
         X, Y = np.meshgrid(x, y)
 
-        lambda_mn = 1 / 2 ** (m + n - 2)
-        e_mn = 4 * np.sin(n * pi * X) * np.sin(m * pi * Y)
+        lambda_mn = 1 / (m + n) ** 4
+        e_mn = 0.4 * np.sin(n * pi * X) * np.sin(m * pi * Y)
         space_mn = np.expand_dims((lambda_mn * e_mn).flatten(), axis=1)
         b = np.expand_dims(brownian(num_time_steps), axis=0)
         return np.dot(space_mn, b)
@@ -61,10 +61,7 @@ def full_noise(fine, Nh, num_time_steps, tau):
     fine_noise = 0
     for m in range(1, Nh + 1):
         for n in range(1, Nh + 1):
-            if m + n - 1 > 55:      # skip terms on machine precision level
-                continue
-            else:
-                fine_noise += noise_term(m, n, num_time_steps)
+            fine_noise += noise_term(m, n, num_time_steps)
     return fine_noise
 
 
