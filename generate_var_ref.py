@@ -7,21 +7,20 @@ import matplotlib.pyplot as plt
 import time
 import os
 
-from gridlod import util, fem, linalg, interp, coef, lod, pglod
-from gridlod.world import World, Patch
+from gridlod import util, fem, linalg
+from gridlod.world import World
 from visualize import drawCoefficient
-from math import pi
 from methods import full_noise
 
 # what files to store in
-ref_file = "new_noise_var_ref.txt"
-sim_file = "new_noise_Mvar_ref.txt"
+ref_file = "reference.txt"
+sim_file = "Mref.txt.txt"
 
 # set random seed
 np.random.seed(0)
 
 # spatial parameters
-fine = 2 ** 6
+fine = 2 ** 7
 fine_world = np.array([fine, fine])
 np_fine = np.prod(fine_world + 1)
 xp_fine = util.pCoordinates(fine_world).flatten()
@@ -29,7 +28,7 @@ bc = np.array([[0, 0], [0, 0]])
 
 # temporal parameters
 T = 0.5
-tau = T * 2 ** (-6)
+tau = T * 2 ** (-7)
 num_time_steps = int(T / tau)
 
 # for coefficient plot
@@ -108,11 +107,7 @@ if os.path.isfile(ref_file):
 else:
     var_ref = 0
 
-# add simulations to reference solution
-#sims_to_add = 1000000
-#for i in range(sims_to_add):
 while True:
-    #print('----------------- %d/%d -----------------' % (i + 1, sims_to_add))
     print('--------------------------------------------')
 
     # generate noise
@@ -133,7 +128,6 @@ while True:
     store_number_of_simulations(1)
     end = time.time()
     print('Storage updated (%.1f sec)' % (end - start))
-
 
 
 

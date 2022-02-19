@@ -53,7 +53,7 @@ def full_noise(fine, Nh, num_time_steps, tau):
         X, Y = np.meshgrid(x, y)
 
         lambda_mn = 1 / (m + n) ** 4
-        e_mn = 0.4 * np.sin(n * pi * X) * np.sin(m * pi * Y)
+        e_mn = 4 * np.sin(n * pi * X) * np.sin(m * pi * Y)
         space_mn = np.expand_dims((lambda_mn * e_mn).flatten(), axis=1)
         b = np.expand_dims(brownian(num_time_steps), axis=0)
         return np.dot(space_mn, b)
